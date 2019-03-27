@@ -1,0 +1,34 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Form</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+
+<body>
+<h3>Please fill out this form</h3>
+<form action="http://localhost:8080/api//submit-request" method="post">
+    First name: <input type = "text" name = "firstName" />
+    <br>
+    Last name: <input type = "text" name = "lastName" />
+    <br>
+    Email: <input type = "text" name = "email" />
+    <br>
+    Current Position: <input type = "text" name = "currentPosition"/>
+    <br>
+    Self Description: <input type = "text" name = "description"/>
+    <br>
+    No of years experience: <input type = "number" name = "numOfYearExperience"/>
+    <br>
+    Current Team's name: <input type = "text" name = "currentTeamName" />
+    <br>
+    Current Manager's name: <input type = "text" name = "currentManagerName" />
+    <br>
+    Manager Id: <input type="number" name="managerId" th:value=${managerId}>
+    <br>
+    Desired Team Id: <input type="number" name="teamId" th:value=${teamId}>
+    <br>
+    <button>Submit</button>
+</form>
+</body>
+</html>
