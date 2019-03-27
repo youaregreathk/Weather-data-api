@@ -4,12 +4,12 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.lc</groupId>
-	<artifactId>nomad</artifactId>
+	<artifactId>weather-data-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>nomad</name>
-	<description>nomad</description>
+	<name>weather-data-api</name>
+	<description>weather-data-api</description>
 
 	<parent>
 		<groupId>org.springframework.boot</groupId>
