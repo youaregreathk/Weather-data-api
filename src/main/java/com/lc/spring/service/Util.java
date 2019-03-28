@@ -6,8 +6,11 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -43,5 +46,14 @@ public final class Util {
                 .map(t -> convertCoordToGeoCoord(t.get(0), t.get(1)))
                 .collect(Collectors.toList());
         return result;
+    }
+    public static String getCurTime() {
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        simpleDateFormat.setTimeZone(TimeZone.getTimeZone("PST"));
+        return simpleDateFormat.format(new Date());
+    }
+
+    public static double getAvergeTempInFahrenheit(long culTempSum, int totalSize) {
+        return (9/5 * ((culTempSum/ totalSize) - 273.15) + 32) ;
     }
 }

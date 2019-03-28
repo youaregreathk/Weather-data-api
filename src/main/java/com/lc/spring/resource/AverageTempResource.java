@@ -1,4 +1,4 @@
-package com.lc.spring.controller;
+package com.lc.spring.resource;
 
 import com.lc.spring.model.Wrapper.GPSCoordinatesWrapper;
 import com.lc.spring.service.WeatherService;

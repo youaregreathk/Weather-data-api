@@ -1,6 +1,6 @@
 package com.lc.spring.service;
 
-import com.lc.spring.dao.WeatherDataDAO;
+import com.lc.spring.repository.WeatherDataDAO;
 import com.lc.spring.entity.WeatherData;
 import com.lc.spring.entity.WeatherId;
 import com.lc.spring.model.WeatherDataModel;
@@ -10,18 +10,20 @@ import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.Iterator;
+import java.util.*;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.TimeZone;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,43 +34,63 @@ public class WeatherServiceImpl implements WeatherService {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private static final String APIID = "18e98cbef3b853720c15a28f2eb2a960";
+    private static final double HIGH_TEMP_THERSHOLD = 281;
+
+    private static final int THREAD_THERSHOLD = 120;
 
     @Autowired
     private WeatherDataDAO weatherDataDAO;
 
+    @Value("${weather.api.key}")
+    private String APIID;
+
     @Override
     @Transactional
     public double getAvgTempByCoordinates(List<List<Double>> coordinates) {
-        List<String> goeCoordList = Util.convertCoordListToGeoList(coordinates);
 
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-        simpleDateFormat.setTimeZone(TimeZone.getTimeZone("PST"));
-        String curTime  = simpleDateFormat.format(new Date());
-
+        String curTime  = Util.getCurTime();
         coordinates.forEach(t -> {
             try {
-                getCurrentAndSaveWeatherByGPSCoordinates(t.get(0), t.get(1));
+                getCurrentAndSaveWeatherByGPSCoordinates(t.get(0), t.get(1),curTime);
             } catch (JSONException e) {
                 e.printStackTrace();
             }
         });
 
         AtomicLong atomicLong = new AtomicLong(0);
-        coordinates.parallelStream()
-                .forEach((t) -> {
-                    logger.info("Before Getting");
-                    String geoCoordinate = Util.convertCoordToGeoCoord(t.get(0), t.get(1));
-                    logger.info(geoCoordinate);
-                    atomicLong.updateAndGet(n -> n + getWeatherByGPSCoordinates(
-                            new WeatherId(geoCoordinate, curTime)).getTemp());
+        ForkJoinPool forkJoinPool = new ForkJoinPool(THREAD_THERSHOLD);
+        try {
+            forkJoinPool.submit(()->coordinates.parallelStream()
+                    .forEach((t) -> {
+                        logger.info("Before Getting");
+                        String geoCoordinate = Util.convertCoordToGeoCoord(t.get(0), t.get(1));
+                        logger.info(geoCoordinate);
+                        atomicLong.updateAndGet(n -> n + getWeatherByGPSCoordinates(
+                                new WeatherId(geoCoordinate, curTime)).getTemp());
 
-                    logger.info(String.valueOf(atomicLong.longValue()));
-                });
-        return (9/5 * ((atomicLong.longValue()/ coordinates.size()) - 273.15) + 32) ;
+                        logger.info(String.valueOf(atomicLong.longValue()));
+                    })).get();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return Util.getAvergeTempInFahrenheit(atomicLong.longValue(), coordinates.size());
     }
 
-    @Async
+    @Override
+    @Transactional
+    public List<Long> getHighTempByTime(String timeStamp) {
+        List<WeatherData> result = weatherDataDAO.getWeatherByTimeStamp(timeStamp);
+        logger.info("size " + result.size());
+        List<Long> highTempList = result.parallelStream()
+                .filter(t -> t.getTemp() > HIGH_TEMP_THERSHOLD)
+                .map(t -> t.getTemp())
+                .collect(Collectors.toList());
+        return highTempList;
+    }
+
+    //@Async
     @Transactional
     public WeatherDataModel getWeatherByGPSCoordinates(WeatherId weatherId) {
 
@@ -102,14 +124,14 @@ public class WeatherServiceImpl implements WeatherService {
 
     @Override
     @Transactional
-    public WeatherDataModel getCurrentAndSaveWeatherByGPSCoordinates(double lat, double lon) throws org.json.JSONException {
+    public WeatherDataModel getCurrentAndSaveWeatherByGPSCoordinates(double lat, double lon, String timeStamp) throws org.json.JSONException {
 
         com.jayway.restassured.response.Response response = given().pathParam("APIID", APIID)
                 .pathParam("lat", lat)
                 .pathParam("lon", lon)
                 .when().get("https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&APPID={APIID}");
 
-        WeatherDataModel weatherDataModel = convertResponseObjectToWeatherDataModel(response, lat, lon);
+        WeatherDataModel weatherDataModel = convertResponseObjectToWeatherDataModel(response, lat, lon, timeStamp);
 
         logger.info("Before Saving");
 
@@ -143,7 +165,8 @@ public class WeatherServiceImpl implements WeatherService {
         weatherDataDAO.save(weatherData);
     }
 
-    private WeatherDataModel convertResponseObjectToWeatherDataModel(com.jayway.restassured.response.Response response, double lat, double lon)
+    private WeatherDataModel convertResponseObjectToWeatherDataModel(com.jayway.restassured.response.Response response,
+                                                                     double lat, double lon, String curTime)
             throws org.json.JSONException {
         JSONObject jsonObject = new JSONObject(response.asString());
         Iterator<String> keys = jsonObject.keys();
@@ -168,10 +191,6 @@ public class WeatherServiceImpl implements WeatherService {
                 weatherDataModel.setWeatherDescription(tmp.getString("description"));
             }
         }
-
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-        simpleDateFormat.setTimeZone(TimeZone.getTimeZone("PST"));
-        String curTime  = simpleDateFormat.format(new Date());
         weatherDataModel.setTimeStamp(curTime);
         weatherDataModel.setLatitude(lat);
         weatherDataModel.setLongitude(lon);
@@ -181,7 +200,7 @@ public class WeatherServiceImpl implements WeatherService {
     @Override
     @Transactional
     public void save() {
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         simpleDateFormat.setTimeZone(TimeZone.getTimeZone("PST"));
         String curTime  = simpleDateFormat.format(new Date());
 
