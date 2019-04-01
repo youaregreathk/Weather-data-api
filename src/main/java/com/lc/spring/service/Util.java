@@ -6,6 +6,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -55,5 +56,10 @@ public final class Util {
 
     public static double getAvergeTempInFahrenheit(long culTempSum, int totalSize) {
         return (9/5 * ((culTempSum/ totalSize) - 273.15) + 32) ;
+    }
+
+    public static double convertAbsoluteToFahrenheit(long temp) {
+        DecimalFormat df = new DecimalFormat("#.##");
+        return Double.valueOf(df.format((9/5 * (temp - 273.15) + 32)));
     }
 }

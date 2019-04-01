@@ -1,6 +1,7 @@
 package com.lc.spring.resource;
 
 import com.lc.spring.model.Wrapper.GPSCoordinatesWrapper;
+import com.lc.spring.model.response.WeatherDataResponse;
 import com.lc.spring.service.WeatherService;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
@@ -10,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.ws.rs.core.Response;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -32,8 +34,10 @@ public class AverageTempResource {
         logger.info("START:getAverageByGPSCoord");
         double averageTemp = weatherService.getAvgTempByCoordinates(coordinateList.getCoordinateList());
         logger.info("END:getAverageByGPSCoord");
+
+        WeatherDataResponse<Double> weatherDataModelWeatherDataResponse = new WeatherDataResponse<>(averageTemp);
         return Response.status(Response.Status.OK)
-                .entity(averageTemp)
+                .entity(weatherDataModelWeatherDataResponse)
                 .build();
     }
 }

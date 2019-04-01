@@ -1,6 +1,7 @@
 package com.lc.spring.resource;
 
 import com.lc.spring.model.Wrapper.GPSCoordinatesWrapper;
+import com.lc.spring.model.response.WeatherDataResponse;
 import com.lc.spring.service.WeatherService;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
@@ -33,8 +34,9 @@ public class HighTempAcrossTheGlobe {
         List<Long> highTempList = weatherService.getHighTempByTime(timeStamp);
         logger.info("END:getAverageByGPSCoord");
 
+        WeatherDataResponse<List<Long>> weatherDataModelWeatherDataResponse = new WeatherDataResponse<>(highTempList);
         return Response.status(Response.Status.OK)
-                .entity(highTempList)
+                .entity(weatherDataModelWeatherDataResponse)
                 .build();
     }
 }

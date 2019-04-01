@@ -1,6 +1,7 @@
 package com.lc.spring.resource;
 
 import com.lc.spring.model.WeatherDataModel;
+import com.lc.spring.model.response.WeatherDataResponse;
 import com.lc.spring.service.Util;
 import com.lc.spring.service.WeatherService;
 import io.swagger.annotations.ApiResponse;
@@ -43,8 +44,10 @@ public class HomeResource {
 
         logger.info("END:getCurrentWeatherByGPSCoord for lat={}, lon={}", lat, lon);
 
+        WeatherDataResponse<WeatherDataModel> weatherDataModelWeatherDataResponse
+                = new WeatherDataResponse<>(weatherDataModel);
         return Response.status(Response.Status.OK)
-                .entity(weatherDataModel)
+                .entity(weatherDataModelWeatherDataResponse)
                 .build();
     }
 }
