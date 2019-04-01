@@ -1,6 +1,6 @@
 package com.lc.spring.resource;
 
-import com.lc.spring.model.Wrapper.GPSCoordinatesWrapper;
+import com.lc.spring.model.wrapper.GPSCoordinatesWrapper;
 import com.lc.spring.model.response.WeatherDataResponse;
 import com.lc.spring.service.WeatherService;
 import io.swagger.annotations.ApiResponse;
@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.ws.rs.core.Response;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api")

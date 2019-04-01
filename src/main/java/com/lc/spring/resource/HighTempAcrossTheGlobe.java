@@ -1,6 +1,5 @@
 package com.lc.spring.resource;
 
-import com.lc.spring.model.Wrapper.GPSCoordinatesWrapper;
 import com.lc.spring.model.response.WeatherDataResponse;
 import com.lc.spring.service.WeatherService;
 import io.swagger.annotations.ApiResponse;

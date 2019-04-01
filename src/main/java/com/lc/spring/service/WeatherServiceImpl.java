@@ -20,9 +20,6 @@ import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Iterator;
-import java.util.TimeZone;
-import java.util.Date;
-import java.text.SimpleDateFormat;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicLong;
@@ -31,22 +28,70 @@ import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
 
 import static com.jayway.restassured.RestAssured.given;
-import static org.codehaus.groovy.runtime.DefaultGroovyMethods.collect;
 
 @Service
 public class WeatherServiceImpl implements WeatherService {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private static final double HIGH_TEMP_THERSHOLD = 281;
+    private static final String MAIN = "main";
 
-    private static final int THREAD_THERSHOLD = 120;
+    private static final String TEMP = "temp";
+
+    private static final String HUMIDITY = "humidity";
+
+    private static final String TEMP_MIN = "temp_min";
+
+    private static final String TEMP_MAX = "temp_max";
+
+    private static final String SYS = "sys";
+
+    private static final String SUNRISE = "sunrise";
+
+    private static final String SUNSET = "sunset";
+
+    private static final String COUNTRY = "country";
+
+    private static final String WEATHER = "weather";
+
+    private static final String DESCRIPTION = "description";
 
     @Autowired
     private WeatherDataDAO weatherDataDAO;
 
     @Value("${weather.api.key}")
-    private String APIID;
+    private String apiId;
+
+    @Value("${thread.concurrent.threshold}")
+    private int threadThreshold;
+
+    @Value("${temp.threshold}")
+    private int highTempThreshold;
+
+    @Override
+    @Transactional
+    public List<Long> getHighTempByTime(String timeStamp) {
+        List<WeatherData> result = weatherDataDAO.getWeatherByTimeStamp(timeStamp);
+        List<Long> highTempList = result.parallelStream()
+                .filter(t -> t.getTemp() > highTempThreshold)
+                .map(t -> t.getTemp())
+                .collect(Collectors.toList());
+        return highTempList;
+    }
+
+    @Override
+    @Transactional
+    public WeatherDataModel getCurrentAndSaveWeatherByGPSCoordinates(double lat, double lon, String timeStamp) {
+
+        com.jayway.restassured.response.Response response = given().pathParam("apiId", apiId)
+                .pathParam("lat", lat)
+                .pathParam("lon", lon)
+                .when().get("https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&APPID={apiId}");
+
+        WeatherDataModel weatherDataModel = convertResponseObjectToWeatherDataModel(response, lat, lon, timeStamp);
+        saveWeatherData(weatherDataModel);
+        return weatherDataModel;
+    }
 
     @Override
     @Transactional
@@ -58,7 +103,7 @@ public class WeatherServiceImpl implements WeatherService {
         });
 
         AtomicLong atomicLong = new AtomicLong(0);
-        ForkJoinPool forkJoinPool = new ForkJoinPool(THREAD_THERSHOLD);
+        ForkJoinPool forkJoinPool = new ForkJoinPool(threadThreshold);
         try {
             forkJoinPool.submit(() -> coordinates.parallelStream()
                     .forEach((t) -> {
@@ -75,17 +120,6 @@ public class WeatherServiceImpl implements WeatherService {
             throw new WdRemoteException(e.getMessage());
         }
         return Util.getAvergeTempInFahrenheit(atomicLong.longValue(), coordinates.size());
-    }
-
-    @Override
-    @Transactional
-    public List<Long> getHighTempByTime(String timeStamp) {
-        List<WeatherData> result = weatherDataDAO.getWeatherByTimeStamp(timeStamp);
-        List<Long> highTempList = result.parallelStream()
-                .filter(t -> t.getTemp() > HIGH_TEMP_THERSHOLD)
-                .map(t -> t.getTemp())
-                .collect(Collectors.toList());
-        return highTempList;
     }
 
     @Transactional
@@ -110,21 +144,6 @@ public class WeatherServiceImpl implements WeatherService {
                 .latitude(lat)
                 .longitude(lon)
                 .build();
-        return weatherDataModel;
-    }
-
-
-    @Override
-    @Transactional
-    public WeatherDataModel getCurrentAndSaveWeatherByGPSCoordinates(double lat, double lon, String timeStamp) {
-
-        com.jayway.restassured.response.Response response = given().pathParam("APIID", APIID)
-                .pathParam("lat", lat)
-                .pathParam("lon", lon)
-                .when().get("https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&APPID={APIID}");
-
-        WeatherDataModel weatherDataModel = convertResponseObjectToWeatherDataModel(response, lat, lon, timeStamp);
-        saveWeatherData(weatherDataModel);
         return weatherDataModel;
     }
 
@@ -154,30 +173,29 @@ public class WeatherServiceImpl implements WeatherService {
 
     private WeatherDataModel convertResponseObjectToWeatherDataModel(com.jayway.restassured.response.Response response,
                                                                      double lat, double lon, String curTime) {
-        JSONObject jsonObject = null;
         try {
-            jsonObject = new JSONObject(response.asString());
+            JSONObject jsonObject  = new JSONObject(response.asString());
 
             Iterator<String> keys = jsonObject.keys();
             WeatherDataModel weatherDataModel = new WeatherDataModel();
 
             while (keys.hasNext()) {
                 String key = keys.next();
-                if (key.equals("main")) {
+                if (key.equals(MAIN)) {
                     JSONObject valueObject = jsonObject.getJSONObject(key);
-                    weatherDataModel.setTemp(valueObject.getLong("temp"));
-                    weatherDataModel.setHumidity(valueObject.getLong("humidity"));
-                    weatherDataModel.setTempMin(valueObject.getLong("temp_min"));
-                    weatherDataModel.setTempMax(valueObject.getLong("temp_max"));
-                } else if (key.equals("sys")) {
+                    weatherDataModel.setTemp(valueObject.getLong(TEMP));
+                    weatherDataModel.setHumidity(valueObject.getLong(HUMIDITY));
+                    weatherDataModel.setTempMin(valueObject.getLong(TEMP_MIN));
+                    weatherDataModel.setTempMax(valueObject.getLong(TEMP_MAX));
+                } else if (key.equals(SYS)) {
                     JSONObject valueObject = jsonObject.getJSONObject(key);
-                    weatherDataModel.setSunRise(valueObject.getLong("sunrise"));
-                    weatherDataModel.setSunSet(valueObject.getLong("sunset"));
-                    weatherDataModel.setCountry(valueObject.getString("country"));
-                } else if (key.equals("weather")) {
-                    JSONArray jsonArray = jsonObject.getJSONArray("weather");
+                    weatherDataModel.setSunRise(valueObject.getLong(SUNRISE));
+                    weatherDataModel.setSunSet(valueObject.getLong(SUNSET));
+                    weatherDataModel.setCountry(valueObject.getString(COUNTRY));
+                } else if (key.equals(WEATHER)) {
+                    JSONArray jsonArray = jsonObject.getJSONArray(WEATHER);
                     JSONObject tmp = jsonArray.getJSONObject(0);
-                    weatherDataModel.setWeatherDescription(tmp.getString("description"));
+                    weatherDataModel.setWeatherDescription(tmp.getString(DESCRIPTION));
                 }
             }
 
@@ -191,29 +209,4 @@ public class WeatherServiceImpl implements WeatherService {
         }
     }
 
-    @Override
-    @Transactional
-    public void save() {
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        simpleDateFormat.setTimeZone(TimeZone.getTimeZone("PST"));
-        String curTime = simpleDateFormat.format(new Date());
-
-        WeatherId weatherId = WeatherId.builder()
-                .geoCoordinate("12344")
-                .timeStamp(curTime)
-                .build();
-
-        WeatherData weatherData = WeatherData.builder()
-                .weatherId(weatherId)
-                .sunSet(new Long(1234))
-                .tempMax(new Long(1234))
-                .tempMin(new Long(1234))
-                .temp(new Long(1234))
-                .sunRise(new Long(1234))
-                .humidity(new Long(1234))
-                .country("US")
-                .weatherDescription("Sunny")
-                .build();
-        weatherDataDAO.save(weatherData);
-    }
 }

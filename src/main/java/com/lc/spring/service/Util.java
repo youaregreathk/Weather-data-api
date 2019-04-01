@@ -42,12 +42,6 @@ public final class Util {
         }
     }
 
-    public static List<String> convertCoordListToGeoList(List<List<Double>> coordinates) {
-        List<String> result = coordinates.stream()
-                .map(t -> convertCoordToGeoCoord(t.get(0), t.get(1)))
-                .collect(Collectors.toList());
-        return result;
-    }
     public static String getCurTime() {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         simpleDateFormat.setTimeZone(TimeZone.getTimeZone("PST"));
@@ -58,8 +52,4 @@ public final class Util {
         return (9/5 * ((culTempSum/ totalSize) - 273.15) + 32) ;
     }
 
-    public static double convertAbsoluteToFahrenheit(long temp) {
-        DecimalFormat df = new DecimalFormat("#.##");
-        return Double.valueOf(df.format((9/5 * (temp - 273.15) + 32)));
-    }
 }

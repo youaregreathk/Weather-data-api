@@ -1,4 +1,4 @@
-package com.lc.spring.model.Wrapper;
+package com.lc.spring.model.wrapper;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
