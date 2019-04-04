@@ -5,7 +5,6 @@ import com.lc.spring.model.WeatherDataModel;
 import java.util.List;
 
 public interface WeatherService {
-    //public void save();
 
     WeatherDataModel getCurrentAndSaveWeatherByGPSCoordinates(double lat, double lon, String timeStamp);
 

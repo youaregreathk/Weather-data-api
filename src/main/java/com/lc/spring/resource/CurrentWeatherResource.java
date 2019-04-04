@@ -19,7 +19,7 @@ import javax.ws.rs.core.Response;
 
 @RestController
 @RequestMapping("/api")
-public class HomeResource {
+public class CurrentWeatherResource {
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -35,7 +35,7 @@ public class HomeResource {
             @ApiResponse(code = 503, message = "Service unavailable")})
     public Response getCurrentWeatherByGPSCoord(@PathVariable(value = "latitude", required = true) double lat,
                                                 @PathVariable(value = "longitude", required = true) double lon
-    ) throws JSONException {
+    ) {
 
         logger.info("START:getCurrentWeatherByGPSCoord for lat={}, lon={}", lat, lon);
 
