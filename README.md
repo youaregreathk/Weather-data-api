@@ -130,6 +130,10 @@ Error codes list
 | 503| SERVICE_UNAVAILABLE | SERVICE_UNAVAILABLE| 503 will be returned for Service unavailable|
 
 
+## External APIs
+
+This project uses 3rd party (OpenWeatherMap.com) Api to get live weather data. We are limited to 60 calls per mintutes for free access.
+
 ## Lombok
 The project uses [Lombok](https://projectlombok.org/) for code generation.
 Please be sure to install lombok intellij plugin first.
